@@ -1,0 +1,13 @@
+{
+  "domain": "vibbo",
+  "name": "Vibbo",
+  "codeowners": ["@NicolasBonduel"],
+  "config_flow": true,
+  "dependencies": ["frontend", "lovelace"],
+  "documentation": "https://github.com/NicolasBonduel/hass-vibbo-feed",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/NicolasBonduel/hass-vibbo-feed/issues",
+  "requirements": [],
+  "version": "1.0.1"
+}

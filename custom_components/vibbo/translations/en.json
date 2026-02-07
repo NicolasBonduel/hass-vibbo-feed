@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Log in to Vibbo",
+        "description": "You will receive an SMS with a one-time code to verify your identity.",
+        "data": {
+          "phone_number": "Phone number"
+        },
+        "data_description": {
+          "phone_number": "The mobile number linked to your Vibbo/OBOS account."
+        }
+      },
+      "verify_code": {
+        "title": "Verify your phone",
+        "description": "A one-time code has been sent to **{phone_number}**. It may take a few seconds to arrive.",
+        "data": {
+          "verification_code": "Verification code"
+        },
+        "data_description": {
+          "verification_code": "The 4-digit code you received by SMS."
+        }
+      },
+      "select_organization": {
+        "title": "Choose your borettslag",
+        "description": "You are a member of multiple housing cooperatives. Pick the one you want to add.",
+        "data": {
+          "organization": "Borettslag"
+        }
+      },
+      "options": {
+        "title": "Refresh interval",
+        "description": "How often should the feed be updated? A lower value means more frequent updates but may cause rate-limiting.",
+        "data": {
+          "scan_interval": "Update every (minutes)"
+        },
+        "data_description": {
+          "scan_interval": "Minimum 5 minutes. Recommended: 30 minutes."
+        }
+      }
+    },
+    "error": {
+      "auth_error": "Could not start login. Please check your phone number and try again.",
+      "invalid_code": "The verification code is incorrect. Please try again.",
+      "cannot_connect": "Could not connect to Vibbo. Please try again later.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This borettslag is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Vibbo settings",
+        "data": {
+          "scan_interval": "Update every (minutes)"
+        },
+        "data_description": {
+          "scan_interval": "How often the feed is refreshed. Minimum 5 minutes, recommended 30."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "feed": {
+        "name": "Feed"
+      }
+    }
+  }
+}

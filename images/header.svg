@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300">
+  <defs>
+    <linearGradient id="hdrbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F3F7FE"/>
+      <stop offset="50%" style="stop-color:#EDF1FB"/>
+      <stop offset="100%" style="stop-color:#E3EAFC"/>
+    </linearGradient>
+    <linearGradient id="accent1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#486FDD;stop-opacity:0.08"/>
+      <stop offset="100%" style="stop-color:#486FDD;stop-opacity:0.03"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="300" rx="16" fill="url(#hdrbg)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="1050" cy="60" r="120" fill="url(#accent1)"/>
+  <circle cx="150" cy="260" r="80" fill="url(#accent1)"/>
+  <circle cx="1100" cy="240" r="60" fill="url(#accent1)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.04" stroke="#486FDD" stroke-width="1">
+    <line x1="0" y1="60" x2="1200" y2="60"/>
+    <line x1="0" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="180" x2="1200" y2="180"/>
+    <line x1="0" y1="240" x2="1200" y2="240"/>
+    <line x1="200" y1="0" x2="200" y2="300"/>
+    <line x1="400" y1="0" x2="400" y2="300"/>
+    <line x1="600" y1="0" x2="600" y2="300"/>
+    <line x1="800" y1="0" x2="800" y2="300"/>
+    <line x1="1000" y1="0" x2="1000" y2="300"/>
+  </g>
+
+  <!-- Icon -->
+  <g transform="translate(100, 70)">
+    <rect width="160" height="160" rx="34" ry="34" fill="#486FDD"/>
+    <!-- Vibbo "Vi" mark -->
+    <g transform="translate(80, 80) scale(0.022, -0.022) translate(-2560, -2560)" fill="#ffffff" stroke="none">
+      <path d="M3860 4039 l0 -382 78 6 c95 7 216 44 302 94 99 57 236 200 287 299 47 90 78 196 89 297 l6 67 -381 0 -381 0 0 -381z"/>
+      <path d="M640 3268 c0 -2 233 -579 518 -1283 l518 -1280 384 -3 385 -2 518 1264 c285 695 521 1273 524 1285 l5 21 -398 -2 -399 -3 -310 -837 c-171 -460 -313 -839 -315 -842 -3 -2 -145 375 -317 837 l-311 842 -401 3 c-221 1 -401 1 -401 0z"/>
+    </g>
+  </g>
+
+  <!-- Title -->
+  <text x="300" y="145" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="80" font-weight="800" fill="#0D1D49" letter-spacing="-2">Vibbo</text>
+
+  <!-- Subtitle -->
+  <text x="302" y="190" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#475569" letter-spacing="0.5">Your building's feed in Home Assistant</text>
+
+  <!-- Feature pills -->
+  <g transform="translate(302, 210)">
+    <!-- Pill 1 -->
+    <rect x="0" y="0" width="130" height="32" rx="16" fill="#486FDD" opacity="0.10"/>
+    <text x="65" y="21" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#486FDD">🏠 News Feed</text>
+    <!-- Pill 2 -->
+    <rect x="142" y="0" width="150" height="32" rx="16" fill="#486FDD" opacity="0.10"/>
+    <text x="217" y="21" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#486FDD">📋 Lovelace Card</text>
+    <!-- Pill 3 -->
+    <rect x="304" y="0" width="130" height="32" rx="16" fill="#486FDD" opacity="0.10"/>
+    <text x="369" y="21" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#486FDD">⚡ UI Config</text>
+    <!-- Pill 4 -->
+    <rect x="446" y="0" width="120" height="32" rx="16" fill="#486FDD" opacity="0.10"/>
+    <text x="506" y="21" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#486FDD">🇳🇴 Norway</text>
+  </g>
+</svg>

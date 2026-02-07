@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Vibbo brand blue background (official color #486FDD) -->
+  <rect width="512" height="512" rx="108" ry="108" fill="#486FDD"/>
+  <!-- Vibbo "V" + "i" mark from official branding, white on blue -->
+  <g transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)" fill="#ffffff" stroke="none">
+    <path d="M3860 4039 l0 -382 78 6 c95 7 216 44 302 94 99 57 236 200 287 299 47 90 78 196 89 297 l6 67 -381 0 -381 0 0 -381z"/>
+    <path d="M640 3268 c0 -2 233 -579 518 -1283 l518 -1280 384 -3 385 -2 518 1264 c285 695 521 1273 524 1285 l5 21 -398 -2 -399 -3 -310 -837 c-171 -460 -313 -839 -315 -842 -3 -2 -145 375 -317 837 l-311 842 -401 3 c-221 1 -401 1 -401 0z"/>
+  </g>
+</svg>
