@@ -23,12 +23,17 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 _CARD_PATH = Path(__file__).parent / "frontend" / "vibbo-feed-card.js"
 
 
-def _card_url() -> str:
-    """Return the card URL with a content-hash query param for cache busting."""
+def _compute_file_hash() -> str:
+    """Read the card file and return an MD5 hash (runs in executor)."""
     try:
-        file_hash = hashlib.md5(_CARD_PATH.read_bytes(), usedforsecurity=False).hexdigest()[:8]
+        return hashlib.md5(_CARD_PATH.read_bytes(), usedforsecurity=False).hexdigest()[:8]
     except OSError:
-        file_hash = "0"
+        return "0"
+
+
+async def _async_card_url(hass: HomeAssistant) -> str:
+    """Return the card URL with a content-hash query param for cache busting."""
+    file_hash = await hass.async_add_executor_job(_compute_file_hash)
     return f"{FRONTEND_SCRIPT_URL}?{file_hash}"
 
 
@@ -67,7 +72,7 @@ async def _async_register_card(hass: HomeAssistant) -> None:
         )
         return
 
-    card_url = _card_url()
+    card_url = await _async_card_url(hass)
 
     # Register the static file path
     try:
