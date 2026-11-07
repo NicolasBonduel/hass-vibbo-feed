@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
-import aiohttp
 import voluptuous as vol
 
 from homeassistant.config_entries import (
@@ -15,16 +15,16 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
 
 from .auth import (
     AuthError,
-    AuthSession,
+    InvalidCookie,
     Membership,
+    NotLoggedIn,
     fetch_organization_id,
     fetch_organizations,
-    request_sms_code,
-    start_login,
-    verify_code_and_get_cookie,
+    parse_cookie,
 )
 from .const import (
     CONF_COOKIE,
@@ -34,8 +34,13 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
+from .session import async_get_vibbo_session
 
 _LOGGER = logging.getLogger(__name__)
+
+COOKIE_SCHEMA = vol.Schema(
+    {vol.Required(CONF_COOKIE): TextSelector(TextSelectorConfig(multiline=True))}
+)
 
 
 class VibboConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -51,27 +56,40 @@ class VibboConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._phone_number: str | None = None
-        self._session: aiohttp.ClientSession | None = None
-        self._auth_session: AuthSession | None = None
         self._cookie: str | None = None
         self._memberships: list[Membership] = []
         self._selected_membership: Membership | None = None
 
-    async def _cleanup_session(self) -> None:
-        """Close the aiohttp session if open."""
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None
+    async def _validate_cookie(
+        self, pasted: str, errors: dict[str, str]
+    ) -> str | None:
+        """Parse the pasted cookie and load its memberships, or set an error."""
+        try:
+            cookie = parse_cookie(pasted)
+            self._memberships = await fetch_organizations(
+                async_get_vibbo_session(self.hass), cookie
+            )
+        except InvalidCookie:
+            errors["base"] = "invalid_cookie"
+        except NotLoggedIn:
+            errors["base"] = "invalid_auth"
+        except AuthError as err:
+            _LOGGER.error("Error validating Vibbo cookie: %s", err)
+            errors["base"] = "cannot_connect"
+        except Exception:
+            _LOGGER.exception("Unexpected error validating Vibbo cookie")
+            errors["base"] = "unknown"
+        else:
+            return cookie
+        return None
 
     async def _create_entry_for_membership(
         self, membership: Membership, scan_interval: int = DEFAULT_SCAN_INTERVAL
     ) -> ConfigFlowResult:
         """Fetch the org ID and create the config entry."""
-        async with aiohttp.ClientSession() as session:
-            org_id = await fetch_organization_id(
-                session, self._cookie, membership.slug
-            )
+        org_id = await fetch_organization_id(
+            async_get_vibbo_session(self.hass), self._cookie, membership.slug
+        )
 
         await self.async_set_unique_id(membership.slug)
         self._abort_if_unique_id_configured()
@@ -91,99 +109,28 @@ class VibboConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Step 1: Ask for phone number, send SMS code."""
+        """Step 1: Paste the Vibbo session cookie."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            phone = user_input["phone_number"].strip()
-            if not phone.startswith("+"):
-                phone = f"+47{phone}"
-            self._phone_number = phone
-
-            try:
-                self._session = aiohttp.ClientSession()
-                self._auth_session = await start_login(self._session)
-                await request_sms_code(
-                    self._session, self._auth_session, self._phone_number
-                )
-                return await self.async_step_verify_code()
-            except AuthError as err:
-                _LOGGER.error("Auth error: %s", err)
-                errors["base"] = "auth_error"
-                await self._cleanup_session()
-            except Exception:
-                _LOGGER.exception("Unexpected error during SMS request")
-                errors["base"] = "unknown"
-                await self._cleanup_session()
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("phone_number"): str,
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_verify_code(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Step 2: Verify SMS code, then fetch organizations."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            code = user_input["verification_code"].strip()
-            try:
-                self._cookie = await verify_code_and_get_cookie(
-                    self._session,
-                    self._auth_session,
-                    self._phone_number,
-                    code,
-                )
-                await self._cleanup_session()
-
-                # Fetch available organizations
-                async with aiohttp.ClientSession() as session:
-                    self._memberships = await fetch_organizations(
-                        session, self._cookie
-                    )
-
+            self._cookie = await self._validate_cookie(
+                user_input[CONF_COOKIE], errors
+            )
+            if self._cookie:
                 # If only one org, skip the selection step
                 if len(self._memberships) == 1:
                     self._selected_membership = self._memberships[0]
                     return await self.async_step_options()
-
                 return await self.async_step_select_organization()
 
-            except AuthError as err:
-                _LOGGER.error("Verification error: %s", err)
-                if "Verification failed" in str(err):
-                    errors["base"] = "invalid_code"
-                else:
-                    errors["base"] = "cannot_connect"
-            except Exception:
-                _LOGGER.exception("Unexpected error during verification")
-                errors["base"] = "unknown"
-                await self._cleanup_session()
-
         return self.async_show_form(
-            step_id="verify_code",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("verification_code"): str,
-                }
-            ),
-            errors=errors,
-            description_placeholders={
-                "phone_number": self._phone_number or "",
-            },
+            step_id="user", data_schema=COOKIE_SCHEMA, errors=errors
         )
 
     async def async_step_select_organization(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Step 3: Select which organization to add."""
+        """Step 2: Select which organization to add."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -208,7 +155,7 @@ class VibboConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_options(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Step 4: Configure refresh interval."""
+        """Step 3: Configure refresh interval."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -235,6 +182,37 @@ class VibboConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Start re-authentication when the stored cookie stops working."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for a fresh cookie for the same borettslag."""
+        errors: dict[str, str] = {}
+        entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            cookie = await self._validate_cookie(user_input[CONF_COOKIE], errors)
+            if cookie:
+                slugs = {m.slug for m in self._memberships}
+                if entry.data[CONF_ORGANIZATION_SLUG] not in slugs:
+                    errors["base"] = "wrong_account"
+                else:
+                    return self.async_update_reload_and_abort(
+                        entry, data_updates={CONF_COOKIE: cookie}
+                    )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=COOKIE_SCHEMA,
+            errors=errors,
+            description_placeholders={"name": entry.title},
         )
 
 
