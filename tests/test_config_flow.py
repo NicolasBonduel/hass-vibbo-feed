@@ -44,6 +44,7 @@ async def test_user_flow_with_one_organization(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
+    assert result["description_placeholders"] == {"vibbo_url": "https://vibbo.no"}
     with (
         _patch_organizations([BRL_A]),
         patch(f"{FLOW}.fetch_organization_id", AsyncMock(return_value="T3Jn")),
@@ -103,6 +104,10 @@ async def test_reauth_replaces_cookie_for_same_organization(
     entry = _add_entry(hass)
     result = await entry.start_reauth_flow(hass)
     assert result["step_id"] == "reauth_confirm"
+    assert result["description_placeholders"] == {
+        "name": "Brl A",
+        "vibbo_url": "https://vibbo.no",
+    }
 
     with _patch_organizations([BRL_B]):
         result = await hass.config_entries.flow.async_configure(
