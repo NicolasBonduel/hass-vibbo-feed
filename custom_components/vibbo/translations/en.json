@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to Vibbo",
-        "description": "Home Assistant uses your browser's Vibbo session to read the feed.\n\n1. Log in at [vibbo.no](https://vibbo.no) in a desktop browser.\n2. Open the developer tools (F12) and go to the **Network** tab, then reload the page.\n3. Right-click any request to `vibbo.no` and choose **Copy → Copy as cURL**.\n4. Paste it below. Only the `sesid` and `sesid.sig` cookies are kept.\n\nYou can also paste just the request's `Cookie` header, or the two cookies from **Application → Cookies** (Chrome) / **Storage → Cookies** (Firefox) written as `sesid=…; sesid.sig=…`.",
+        "description": "Home Assistant uses your browser's Vibbo session to read the feed.\n\n1. Log in at [vibbo.no]({vibbo_url}) in a desktop browser.\n2. Open the developer tools (F12) and go to the **Network** tab, then reload the page.\n3. Right-click any request to `vibbo.no` and choose **Copy → Copy as cURL**.\n4. Paste it below. Only the `sesid` and `sesid.sig` cookies are kept.\n\nYou can also paste just the request's `Cookie` header, or the two cookies from **Application → Cookies** (Chrome) / **Storage → Cookies** (Firefox) written as `sesid=…; sesid.sig=…`.",
         "data": {
           "cookie": "Vibbo session"
         },
@@ -30,7 +30,7 @@
       },
       "reauth_confirm": {
         "title": "Vibbo session expired",
-        "description": "The Vibbo session for **{name}** has expired or was logged out. Paste a fresh one.\n\n1. Log in at [vibbo.no](https://vibbo.no) in a desktop browser.\n2. Open the developer tools (F12) and go to the **Network** tab, then reload the page.\n3. Right-click any request to `vibbo.no` and choose **Copy → Copy as cURL**.\n4. Paste it below. Only the `sesid` and `sesid.sig` cookies are kept.\n\nYou can also paste just the request's `Cookie` header, or the two cookies from **Application → Cookies** (Chrome) / **Storage → Cookies** (Firefox) written as `sesid=…; sesid.sig=…`.",
+        "description": "The Vibbo session for **{name}** has expired or was logged out. Paste a fresh one.\n\n1. Log in at [vibbo.no]({vibbo_url}) in a desktop browser.\n2. Open the developer tools (F12) and go to the **Network** tab, then reload the page.\n3. Right-click any request to `vibbo.no` and choose **Copy → Copy as cURL**.\n4. Paste it below. Only the `sesid` and `sesid.sig` cookies are kept.\n\nYou can also paste just the request's `Cookie` header, or the two cookies from **Application → Cookies** (Chrome) / **Storage → Cookies** (Firefox) written as `sesid=…; sesid.sig=…`.",
         "data": {
           "cookie": "Vibbo session"
         },

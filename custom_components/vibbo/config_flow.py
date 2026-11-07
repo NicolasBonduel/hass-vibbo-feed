@@ -18,6 +18,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
 
 from .auth import (
+    VIBBO_BASE,
     AuthError,
     InvalidCookie,
     Membership,
@@ -124,7 +125,10 @@ class VibboConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_select_organization()
 
         return self.async_show_form(
-            step_id="user", data_schema=COOKIE_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=COOKIE_SCHEMA,
+            errors=errors,
+            description_placeholders={"vibbo_url": VIBBO_BASE},
         )
 
     async def async_step_select_organization(
@@ -212,7 +216,7 @@ class VibboConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="reauth_confirm",
             data_schema=COOKIE_SCHEMA,
             errors=errors,
-            description_placeholders={"name": entry.title},
+            description_placeholders={"name": entry.title, "vibbo_url": VIBBO_BASE},
         )
 
 
