@@ -1,23 +1,27 @@
-"""Authentication helper for Vibbo via Auth0 passwordless SMS."""
+"""Authentication helper for Vibbo via a pasted browser session cookie."""
 
 from __future__ import annotations
 
 import logging
 import re
 from dataclasses import dataclass, field
-from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
-AUTH0_BASE = "https://innlogging.obos.no"
 VIBBO_BASE = "https://vibbo.no"
-CLIENT_ID = "XYMlspPsEnOhvvpV6plvaq6UZAT1e6IC"
-AUTH0_CLIENT_HEADER = "eyJuYW1lIjoiYXV0aDAuanMiLCJ2ZXJzaW9uIjoiOS4zMC4wIn0="
-REDIRECT_URI = f"{VIBBO_BASE}/auth/callback"
-AUDIENCE = f"{VIBBO_BASE}/"
-SCOPE = "openid email phone profile"
+
+# Matches the cookie wherever it appears in a pasted Cookie header, cURL
+# command or "name=value" pair. \b stops "sesid" matching inside "xsesid".
+_SESID_RE = re.compile(r"\bsesid=([^;\s'\"^\\]+)")
+_SESID_SIG_RE = re.compile(r"\bsesid\.sig=([^;\s'\"^\\]+)")
+
+VIBBO_VIEWER_QUERY = """query vibboViewer {
+  viewer {
+    id
+  }
+}"""
 
 VIBBO_ORGANIZATIONS_QUERY = """query vibboOrganizations {
   viewer {
@@ -49,6 +53,14 @@ class AuthError(Exception):
     """Authentication error."""
 
 
+class InvalidCookie(AuthError):
+    """The pasted text does not contain the Vibbo session cookies."""
+
+
+class NotLoggedIn(AuthError):
+    """The session cookie is expired or belongs to a logged-out session."""
+
+
 @dataclass
 class Membership:
     """A Vibbo organization membership."""
@@ -60,179 +72,17 @@ class Membership:
     roles: list[str] = field(default_factory=list)
 
 
-@dataclass
-class AuthSession:
-    """Holds state for an in-progress authentication."""
+def parse_cookie(text: str) -> str:
+    """Extract sesid and sesid.sig from pasted text into a Cookie header value.
 
-    state: str
-    csrf: str
-    nonce: str
-    login_url: str
-
-
-async def start_login(session: aiohttp.ClientSession) -> AuthSession:
-    """Load the Auth0 login page to get _csrf, state, nonce and session cookies.
-
-    Navigates vibbo.no/auth/login → innlogging.obos.no/authorize →
-    innlogging.obos.no/login (HTML with SMS form).
+    Accepts a raw Cookie header, a "Copy as cURL" command from the browser's
+    network tab, or the two name=value pairs on their own.
     """
-    async with session.get(
-        f"{VIBBO_BASE}/auth/login",
-        allow_redirects=True,
-    ) as resp:
-        html = await resp.text()
-        final_url = str(resp.url)
-
-    _LOGGER.debug("Login page URL: %s", final_url)
-
-    # Extract _csrf token from the HTML
-    csrf_match = (
-        re.search(r'"_csrf"\s*:\s*"([^"]+)"', html)
-        or re.search(r'name="_csrf"\s+value="([^"]+)"', html)
-        or re.search(r'"_csrf","([^"]+)"', html)
-        or re.search(r"_csrf['\"]?\s*[:=]\s*['\"]([^'\"]+)", html)
-    )
-    if not csrf_match:
-        raise AuthError("Could not find _csrf token in login page")
-
-    # Extract state from the URL query parameters
-    parsed = urlparse(final_url)
-    qs = parse_qs(parsed.query)
-
-    state = qs.get("state", [None])[0]
-    if not state:
-        state_match = re.search(r'"state"\s*:\s*"([^"]+)"', html)
-        if state_match:
-            state = state_match.group(1)
-    if not state:
-        raise AuthError("Could not find state in login page")
-
-    nonce = qs.get("nonce", [None])[0]
-    if not nonce:
-        nonce_match = re.search(r'"nonce"\s*:\s*"([^"]+)"', html)
-        if nonce_match:
-            nonce = nonce_match.group(1)
-    if not nonce:
-        raise AuthError("Could not find nonce in login page")
-
-    return AuthSession(
-        state=state,
-        csrf=csrf_match.group(1),
-        nonce=nonce,
-        login_url=final_url,
-    )
-
-
-async def request_sms_code(
-    session: aiohttp.ClientSession,
-    auth_session: AuthSession,
-    phone_number: str,
-) -> None:
-    """Request an SMS verification code via Auth0 passwordless."""
-    payload = {
-        "client_id": CLIENT_ID,
-        "connection": "sms",
-        "send": "code",
-        "phone_number": phone_number,
-        "authParams": {
-            "response_type": "code",
-            "redirect_uri": REDIRECT_URI,
-            "scope": SCOPE,
-            "audience": AUDIENCE,
-            "_csrf": auth_session.csrf,
-            "state": auth_session.state,
-            "_intstate": "deprecated",
-            "nonce": auth_session.nonce,
-        },
-    }
-
-    async with session.post(
-        f"{AUTH0_BASE}/passwordless/start",
-        json=payload,
-        headers={
-            "Auth0-Client": AUTH0_CLIENT_HEADER,
-            "Content-Type": "application/json",
-            "Origin": AUTH0_BASE,
-            "Referer": auth_session.login_url,
-        },
-    ) as resp:
-        if resp.status != 200:
-            text = await resp.text()
-            raise AuthError(f"Failed to request SMS code: {resp.status} {text}")
-        _LOGGER.debug("SMS code requested successfully")
-
-
-async def verify_code_and_get_cookie(
-    session: aiohttp.ClientSession,
-    auth_session: AuthSession,
-    phone_number: str,
-    verification_code: str,
-) -> str:
-    """Verify SMS code and follow the full redirect chain to obtain Vibbo cookies.
-
-    Flow: POST /passwordless/verify → GET /passwordless/verify_redirect →
-    302 /login/callback → 302 /authorize/resume →
-    302 vibbo.no/auth/callback (sets sesid cookies) → 302 vibbo.no/organisasjoner
-    """
-    referer = auth_session.login_url
-
-    # Step 1: POST /passwordless/verify
-    async with session.post(
-        f"{AUTH0_BASE}/passwordless/verify",
-        json={
-            "connection": "sms",
-            "verification_code": verification_code,
-            "phone_number": phone_number,
-            "client_id": CLIENT_ID,
-        },
-        headers={
-            "Auth0-Client": AUTH0_CLIENT_HEADER,
-            "Content-Type": "application/json",
-            "Origin": AUTH0_BASE,
-            "Referer": referer,
-        },
-    ) as resp:
-        if resp.status != 200:
-            text = await resp.text()
-            raise AuthError(f"Verification failed: {resp.status} {text}")
-
-    # Step 2: GET /passwordless/verify_redirect — follows the full redirect chain
-    async with session.get(
-        f"{AUTH0_BASE}/passwordless/verify_redirect",
-        params={
-            "client_id": CLIENT_ID,
-            "response_type": "code",
-            "redirect_uri": REDIRECT_URI,
-            "scope": SCOPE,
-            "audience": AUDIENCE,
-            "_csrf": auth_session.csrf,
-            "state": auth_session.state,
-            "_intstate": "deprecated",
-            "protocol": "oauth2",
-            "nonce": auth_session.nonce,
-            "connection": "sms",
-            "phone_number": phone_number,
-            "verification_code": verification_code,
-            "auth0Client": AUTH0_CLIENT_HEADER,
-        },
-        headers={"Referer": referer},
-        allow_redirects=True,
-    ) as resp:
-        _LOGGER.debug("Final redirect URL after verify: %s", resp.url)
-
-    # Extract Vibbo session cookies from the cookie jar
-    sesid = None
-    sesid_sig = None
-    for cookie in session.cookie_jar:
-        if cookie.key == "sesid":
-            sesid = cookie.value
-        elif cookie.key == "sesid.sig":
-            sesid_sig = cookie.value
-
+    sesid = _SESID_RE.search(text)
+    sesid_sig = _SESID_SIG_RE.search(text)
     if not sesid or not sesid_sig:
-        raise AuthError("Failed to obtain Vibbo session cookies after login")
-
-    return f"sesid={sesid}; sesid.sig={sesid_sig}"
+        raise InvalidCookie("Could not find sesid and sesid.sig in the pasted text")
+    return f"sesid={sesid.group(1)}; sesid.sig={sesid_sig.group(1)}"
 
 
 async def _graphql(
@@ -267,6 +117,15 @@ async def _graphql(
         return data
 
 
+async def is_logged_in(session: aiohttp.ClientSession, cookie: str) -> bool:
+    """Return whether the cookie belongs to a logged-in Vibbo session.
+
+    Vibbo answers logged-out sessions with null data rather than an error.
+    """
+    data = await _graphql(session, cookie, "vibboViewer", VIBBO_VIEWER_QUERY)
+    return bool((data.get("data") or {}).get("viewer"))
+
+
 async def fetch_organizations(
     session: aiohttp.ClientSession,
     cookie: str,
@@ -276,9 +135,9 @@ async def fetch_organizations(
         session, cookie, "vibboOrganizations", VIBBO_ORGANIZATIONS_QUERY
     )
 
-    viewer = data.get("data", {}).get("viewer")
+    viewer = (data.get("data") or {}).get("viewer")
     if not viewer:
-        raise AuthError("No viewer data in response")
+        raise NotLoggedIn("Vibbo session is not logged in")
 
     memberships = []
     for m in viewer.get("memberships", []):

@@ -2,23 +2,13 @@
   "config": {
     "step": {
       "user": {
-        "title": "Log in to Vibbo",
-        "description": "You will receive an SMS with a one-time code to verify your identity.",
+        "title": "Connect to Vibbo",
+        "description": "Home Assistant uses your browser's Vibbo session to read the feed.\n\n1. Log in at [vibbo.no](https://vibbo.no) in a desktop browser.\n2. Open the developer tools (F12) and go to the **Network** tab, then reload the page.\n3. Right-click any request to `vibbo.no` and choose **Copy → Copy as cURL**.\n4. Paste it below. Only the `sesid` and `sesid.sig` cookies are kept.\n\nYou can also paste just the request's `Cookie` header, or the two cookies from **Application → Cookies** (Chrome) / **Storage → Cookies** (Firefox) written as `sesid=…; sesid.sig=…`.",
         "data": {
-          "phone_number": "Phone number"
+          "cookie": "Vibbo session"
         },
         "data_description": {
-          "phone_number": "The mobile number linked to your Vibbo/OBOS account."
-        }
-      },
-      "verify_code": {
-        "title": "Verify your phone",
-        "description": "A one-time code has been sent to **{phone_number}**. It may take a few seconds to arrive.",
-        "data": {
-          "verification_code": "Verification code"
-        },
-        "data_description": {
-          "verification_code": "The 4-digit code you received by SMS."
+          "cookie": "A cURL command, a Cookie header, or `sesid=…; sesid.sig=…`. The session lasts about a year."
         }
       },
       "select_organization": {
@@ -37,16 +27,28 @@
         "data_description": {
           "scan_interval": "Minimum 5 minutes. Recommended: 30 minutes."
         }
+      },
+      "reauth_confirm": {
+        "title": "Vibbo session expired",
+        "description": "The Vibbo session for **{name}** has expired or was logged out. Paste a fresh one.\n\n1. Log in at [vibbo.no](https://vibbo.no) in a desktop browser.\n2. Open the developer tools (F12) and go to the **Network** tab, then reload the page.\n3. Right-click any request to `vibbo.no` and choose **Copy → Copy as cURL**.\n4. Paste it below. Only the `sesid` and `sesid.sig` cookies are kept.\n\nYou can also paste just the request's `Cookie` header, or the two cookies from **Application → Cookies** (Chrome) / **Storage → Cookies** (Firefox) written as `sesid=…; sesid.sig=…`.",
+        "data": {
+          "cookie": "Vibbo session"
+        },
+        "data_description": {
+          "cookie": "A cURL command, a Cookie header, or `sesid=…; sesid.sig=…`. The session lasts about a year."
+        }
       }
     },
     "error": {
-      "auth_error": "Could not start login. Please check your phone number and try again.",
-      "invalid_code": "The verification code is incorrect. Please try again.",
+      "invalid_cookie": "Could not find the `sesid` and `sesid.sig` cookies in what you pasted.",
+      "invalid_auth": "This Vibbo session is not logged in. Log in at vibbo.no again and copy a fresh session.",
+      "wrong_account": "This session belongs to an account without access to this borettslag.",
       "cannot_connect": "Could not connect to Vibbo. Please try again later.",
       "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This borettslag is already configured."
+      "already_configured": "This borettslag is already configured.",
+      "reauth_successful": "Vibbo session updated."
     }
   },
   "options": {

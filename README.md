@@ -22,7 +22,7 @@
 | ---- | ----------------------- | ---------------------------------------------------------------------------------- |
 | 🔄   | **Live Sensor**   | Polls the Vibbo activity feed on a configurable interval (default 30 min)          |
 | 🗂️ | **Lovelace Card** | Beautiful `vibbo-feed-card` that renders news and posts with links to vibbo.no   |
-| 🔐   | **SMS Login**     | Authenticate with your phone number — no manual cookie copying                    |
+| 🔐   | **Session Login** | Paste your browser's Vibbo session once a year; HA asks for a new one when it expires |
 | 📰   | **News & Posts**  | Supports both**News** (from the board) and **Posts** (from neighbours) |
 
 ---
@@ -53,11 +53,27 @@
 
 1. Go to **Settings → Devices & Services → Add Integration**.
 2. Search for **Vibbo**.
-3. Enter your **phone number** — an SMS verification code will be sent.
-4. Enter the **SMS code** you received.
-5. If you belong to multiple organizations, **select** which borettslag to add.
+3. Paste your **Vibbo session** (see below).
+4. If you belong to multiple organizations, **select** which borettslag to add.
 
-That's it! The integration handles authentication and discovers your organizations automatically.
+The integration discovers your organizations from the session automatically.
+
+### Copying your Vibbo session
+
+OBOS login now requires SMS, an identity check and a password, so the integration
+reuses the session from your browser instead of logging in itself.
+
+1. Log in at [vibbo.no](https://vibbo.no) in a desktop browser.
+2. Open the developer tools (<kbd>F12</kbd>), go to the **Network** tab and reload the page.
+3. Right-click any request to `vibbo.no` → **Copy** → **Copy as cURL**.
+4. Paste the whole command into Home Assistant. Only the `sesid` and `sesid.sig` cookies are kept.
+
+A pasted `Cookie` header, or `sesid=…; sesid.sig=…` copied from
+**Application → Cookies** (Chrome) / **Storage → Cookies** (Firefox), works too.
+The cookies are `HttpOnly`, so a console snippet or bookmarklet cannot read them.
+
+The session lasts about a year. When it expires, Home Assistant shows a
+**Re-authenticate** prompt for the integration; paste a fresh session there.
 
 ---
 
@@ -95,3 +111,13 @@ The integration creates a `sensor.vibbo_feed` entity:
 | **state**             | Title of the latest feed item (truncated to 50 chars)                 |
 | **items**             | Full list of activity items (same structure as the Vibbo GraphQL API) |
 | **organization_slug** | Your building's URL slug, used by the card for links                  |
+
+---
+
+## 🧪 Development
+
+Run the tests with [uv](https://docs.astral.sh/uv/):
+
+```sh
+uv run --no-project --python 3.13 --with-requirements requirements_test.txt pytest
+```

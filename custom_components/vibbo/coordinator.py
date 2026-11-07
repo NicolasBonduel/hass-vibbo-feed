@@ -10,12 +10,13 @@ import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
 
+from .auth import is_logged_in
 from .const import (
     CONF_COOKIE,
     CONF_ORGANIZATION_ID,
@@ -27,6 +28,7 @@ from .const import (
     GRAPHQL_QUERY,
     GRAPHQL_URL,
 )
+from .session import async_get_vibbo_session
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +57,7 @@ class VibboDataCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
 
     async def _async_update_data(self) -> list[dict[str, Any]]:
         """Fetch the activity stream from Vibbo."""
-        session = async_get_clientsession(self.hass)
+        session = async_get_vibbo_session(self.hass)
 
         payload = {
             "operationName": "vibboActivityStream",
@@ -105,5 +107,19 @@ class VibboDataCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 )
             raise UpdateFailed("Invalid response from Vibbo API")
 
-        items: list[dict[str, Any]] = data["data"]["stream"].get("items", [])
+        stream = data["data"]["stream"]
+        if stream is None:
+            # Vibbo returns a null stream both for expired sessions and for
+            # organizations the account can no longer see.
+            try:
+                logged_in = await is_logged_in(session, self._cookie)
+            except Exception as err:
+                raise UpdateFailed(
+                    f"Error communicating with Vibbo: {err}"
+                ) from err
+            if not logged_in:
+                raise ConfigEntryAuthFailed("Vibbo session cookie has expired")
+            raise UpdateFailed("This account no longer has access to the borettslag")
+
+        items: list[dict[str, Any]] = stream.get("items", [])
         return items
